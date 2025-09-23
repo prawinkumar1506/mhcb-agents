@@ -34,7 +34,7 @@ class BaseAgent(ABC):
             llm=self.llm,
             verbose=True,
             allow_delegation=False,
-            max_iter=3
+            max_iter=10 # Increased max_iter to allow more processing time
         )
     
     @abstractmethod

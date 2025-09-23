@@ -4,8 +4,14 @@ CBT Therapist Agent - Provides cognitive behavioral therapy techniques
 from agents.base_agent import BaseAgent
 from typing import Dict, List, Any
 import logging
+import re # Added import for regex
 
 logger = logging.getLogger(__name__)
+
+# Define a custom exception for agent execution limits
+class AgentExecutionLimitError(Exception):
+    """Custom exception for when the agent stops due to iteration/time limit."""
+    pass
 
 class CBTTherapistAgent(BaseAgent):
     def __init__(self):
@@ -39,7 +45,7 @@ class CBTTherapistAgent(BaseAgent):
         A user is experiencing {emotional_state} emotions. Message: "{message}". 
         Concerns: {', '.join(detected_tags)}. Style: {user_style}. CBT Focus: {cbt_focus}.
 
-        Generate a JSON object with "response_text" and "response_options".
+        Generate ONLY a JSON object with "response_text" and "response_options". Do not include any other text or formatting outside the JSON object.
 
         1.  **response_text**:
             - Validate their experience concisely.
@@ -58,22 +64,72 @@ class CBTTherapistAgent(BaseAgent):
         }}
         """
         
-        try:
-            import json
-            response_str = await self.execute_task(task_description, context)
-            response_json = json.loads(response_str)
-            
+        response_str = await self.execute_task(task_description, context)
+
+        # Explicitly check for the known error message immediately after receiving response_str
+        if "Agent stopped due to iteration limit or time limit." in response_str:
+            logger.error(f"Agent execution failed due to iteration/time limit. Raw response: {response_str}")
             return {
-                "response": response_json.get("response_text"),
-                "options": response_json.get("response_options", []),
-                "cbt_technique": cbt_focus,
-                "homework_assigned": self._get_homework_suggestion(cbt_focus),
-                "progress_tracking": self._get_progress_metrics(cbt_focus),
+                "response": "I'm sorry, I'm having trouble processing your request right now. It seems like there was an issue with the underlying system. Could you please try again or rephrase your concern?",
+                "options": ["Try again.", "Rephrase my concern.", "What happened?"],
+                "cbt_technique": "system_error",
+                "homework_assigned": "Take a moment to relax and try again later",
                 "follow_up_needed": True
             }
+
+        try:
+            import json
+            response_json = None
+            json_str = None
             
+            # First, try to parse the response directly, assuming it's clean JSON
+            try:
+                json_str = response_str.strip()
+                response_json = json.loads(json_str)
+            except json.JSONDecodeError:
+                # If direct parsing fails, try to extract JSON using regex
+                json_match = re.search(r'```json\s*(\{[\s\S]*?\})\s*```|(\{[\s\S]*?\})', response_str)
+                
+                if json_match:
+                    if json_match.group(1): # Matched with ```json ... ``` block
+                        json_str = json_match.group(1)
+                    elif json_match.group(2): # Matched with a standalone {...} block
+                        json_str = json_match.group(2)
+                    response_json = json.loads(json_str)
+            
+            if response_json:
+                return {
+                    "response": response_json.get("response_text"),
+                    "options": response_json.get("response_options", []),
+                    "cbt_technique": cbt_focus,
+                    "homework_assigned": self._get_homework_suggestion(cbt_focus),
+                    "progress_tracking": self._get_progress_metrics(cbt_focus),
+                    "follow_up_needed": True
+                }
+            else:
+                logger.error(f"No valid JSON object found in agent's response after all attempts. Raw response: {response_str}")
+                raise ValueError("No valid JSON object found in agent's response.")
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decoding error in CBT therapist: {e}. Response string: {json_str if json_str else response_str}")
+            return {
+                "response": "I'm having a little trouble understanding your thoughts right now. Could you try rephrasing or focusing on one main concern?",
+                "options": ["Yes, I can.", "I'm not sure.", "Where do I start?"],
+                "cbt_technique": "clarification",
+                "homework_assigned": "Reflect on the most pressing thought or feeling",
+                "follow_up_needed": True
+            }
+        except ValueError as e: # Catch the specific ValueError for no JSON found
+            logger.error(f"ValueError in CBT therapist: {e}. Raw response (repr): {repr(response_str)}")
+            return {
+                "response": "I'm having a little trouble processing that. It seems like the information isn't in the format I expected. Can you tell me more about what you're feeling?",
+                "options": ["Yes, I can.", "I'm not sure.", "Where do I start?"],
+                "cbt_technique": "clarification",
+                "homework_assigned": "Describe your feelings in more detail",
+                "follow_up_needed": True
+            }
         except Exception as e:
-            logger.error(f"Error in CBT therapist: {e}")
+            logger.error(f"General error in CBT therapist: {e}. Raw response (repr): {repr(response_str)}")
             return {
                 "response": "I understand you're going through a difficult time. Let's work together to identify some thoughts and feelings you're experiencing. Can you tell me what thoughts are going through your mind right now?",
                 "options": ["Yes, I can.", "I'm not sure.", "Where do I start?"],

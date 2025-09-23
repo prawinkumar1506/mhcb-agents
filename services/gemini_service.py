@@ -218,7 +218,15 @@ class GeminiService:
                     "max_output_tokens": 1024,
                 }
             )
-            return response.text
+            # Robustly handle multi-part responses or simple text responses
+            if response.candidates:
+                # Assuming the first candidate is the desired one
+                candidate_content = response.candidates[0].content
+                if candidate_content.parts:
+                    full_text_response = "".join([part.text for part in candidate_content.parts if hasattr(part, 'text')])
+                    return full_text_response
+            # If no candidates or parts, raise an error
+            raise ValueError("Gemini API response did not contain text content.")
         except Exception as e:
             logger.error(f"Gemini API error: {e}")
             raise

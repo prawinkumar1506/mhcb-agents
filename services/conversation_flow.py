@@ -276,10 +276,14 @@ class ConversationFlowService:
         
         return {
             "response": crisis_response,
+            "session_id": session_id, # Added session_id for consistency with ChatResponse
             "primary_agent": "booking_agent",
+            "agent_type": "booking_agent", # Added agent_type for consistency with ChatResponse
+            "detected_tags": analysis.get("detected_tags", ["crisis"]), # Added detected_tags
             "escalation_needed": True,
             "crisis_intervention": True,
             "helpline_numbers": helpline_dict,
+            "suggested_resources": [], # Added suggested_resources for consistency with ChatResponse
             "immediate_actions": ["provide_helpline", "connect_counselor", "safety_planning"],
             "follow_up_needed": True,
             "next_steps": ["Contact helpline immediately", "Wait for counselor connection", "Create safety plan"]

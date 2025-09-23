@@ -33,6 +33,21 @@ class ConversationManagerAgent(BaseAgent):
         language = context.get("language", "English")
         emotional_state = context.get("emotional_state", "neutral")
         detected_tags = context.get("detected_tags", [])
+
+        # Step 1: Handle very simple greetings immediately
+        lower_message = message.lower().strip()
+        simple_greetings = ["hi", "hello", "hey", "hii daa", "hola", "namaste", "daa"] # Added "daa"
+
+        if any(greeting in lower_message for greeting in simple_greetings) and len(lower_message) <= 10: # Slightly increased length for flexibility
+            logger.info("Very simple greeting detected. Returning templated response.")
+            greeting_text = language_service.get_greeting_templates(language, user_style)
+            return {
+                "response": greeting_text,
+                "options": ["What's on your mind?", "How are you feeling?", "Tell me more."],
+                "recommended_agent": "conversation_manager",
+                "routing_confidence": "high",
+                "immediate_actions": ["continue_conversation"]
+            }
         
         # Create task description based on context
         task_description = f"""
@@ -59,8 +74,17 @@ class ConversationManagerAgent(BaseAgent):
         
         try:
             import json
+            import re
             response_str = await self.execute_task(task_description, context)
-            response_json = json.loads(response_str)
+            
+            # Extract JSON from markdown code block if present
+            json_match = re.search(r"```json\n(.*?)```", response_str, re.DOTALL)
+            if json_match:
+                json_content = json_match.group(1)
+            else:
+                json_content = response_str # Assume it's pure JSON if no markdown block
+            
+            response_json = json.loads(json_content)
             
             # Determine recommended next agent based on tags
             recommended_agent = self._determine_next_agent(detected_tags, emotional_state)

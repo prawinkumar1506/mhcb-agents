@@ -53,37 +53,41 @@ class AgentOrchestrator:
             # Merge contexts
             context = {**analysis, **user_context, **(session_context or {})}
             
-            # Determine primary agent
-            primary_agent_type = analysis.get("recommended_agent", "conversation_manager")
-            
             # Handle crisis situations immediately
             if analysis.get("crisis_indicators", False) or analysis.get("urgency_level") == "crisis":
                 return await self._handle_crisis_situation(message, context)
-            
-            # Process with primary agent
+
+            # Step 1: Check for simple questions to be handled by ConversationManagerAgent
+            if self._is_simple_query(analysis):
+                logger.info("Simple query detected. Routing to ConversationManagerAgent.")
+                conversation_manager_agent = self.agents["conversation_manager"]
+                response = await conversation_manager_agent.process_message(message, context)
+                return {
+                    "response": response["response"],
+                    "primary_agent": "conversation_manager",
+                    "collaboration_used": False,
+                    "techniques_suggested": response.get("technique_taught"),
+                    "follow_up_needed": response.get("follow_up_needed", False),
+                    "escalation_needed": response.get("escalation_completed", False)
+                }
+
+            # Step 2: Determine primary agent for complex queries
+            primary_agent_type = analysis.get("recommended_agent", "conversation_manager")
+            logger.info(f"Complex query detected. Routing to primary agent: {primary_agent_type}")
+
+            # Process with primary agent (only one agent should respond)
             primary_response = await self._process_with_agent(
                 primary_agent_type, message, context
             )
-            
-            # Determine if collaboration is needed
-            collaboration_needed = self._should_collaborate(analysis, primary_response)
-            
-            if collaboration_needed:
-                # Get collaborative response
-                collaborative_response = await self._get_collaborative_response(
-                    message, context, primary_agent_type, primary_response
-                )
-                return collaborative_response
-            else:
-                return {
-                    "response": primary_response["response"],
-                    "primary_agent": primary_agent_type,
-                    "collaboration_used": False,
-                    "techniques_suggested": primary_response.get("technique_taught") or primary_response.get("cbt_technique"),
-                    "follow_up_needed": primary_response.get("follow_up_needed", False),
-                    "escalation_needed": primary_response.get("escalation_completed", False)  # Added escalation status
-                }
-                
+
+            return {
+                "response": primary_response["response"],
+                "primary_agent": primary_agent_type,
+                "collaboration_used": False, # Collaboration is explicitly disabled as per user request
+                "techniques_suggested": primary_response.get("technique_taught") or primary_response.get("cbt_technique"),
+                "follow_up_needed": primary_response.get("follow_up_needed", False),
+                "escalation_needed": primary_response.get("escalation_completed", False)
+            }
         except Exception as e:
             logger.error(f"Error in agent orchestration: {e}")
             return await self._fallback_response(message, context)
@@ -133,135 +137,35 @@ class AgentOrchestrator:
             return True
         
         return False
-    
-    async def _get_collaborative_response(self, 
-                                        message: str, 
-                                        context: Dict[str, Any],
-                                        primary_agent_type: str,
-                                        primary_response: Dict[str, Any]) -> Dict[str, Any]:
-        """Get collaborative response from multiple agents"""
-        
-        try:
-            # Determine secondary agent based on tags
-            secondary_agent_type = self._get_secondary_agent(
-                context.get("detected_tags", []), 
-                primary_agent_type
-            )
-            
-            if secondary_agent_type and secondary_agent_type in self.agents:
-                # Get secondary response
-                secondary_response = await self._process_with_agent(
-                    secondary_agent_type, message, context
-                )
-                
-                # Create collaborative crew
-                collaborative_response = await self._create_collaborative_crew(
-                    message, context, primary_agent_type, secondary_agent_type,
-                    primary_response, secondary_response
-                )
-                
-                return collaborative_response
-            else:
-                # Return primary response if no suitable secondary agent
-                return {
-                    "response": primary_response["response"],
-                    "primary_agent": primary_agent_type,
-                    "collaboration_used": False
-                }
-                
-        except Exception as e:
-            logger.error(f"Error in collaborative response: {e}")
-            return {
-                "response": primary_response["response"],
-                "primary_agent": primary_agent_type,
-                "collaboration_used": False
-            }
-    
-    async def _create_collaborative_crew(self, 
-                                       message: str,
-                                       context: Dict[str, Any],
-                                       primary_agent_type: str,
-                                       secondary_agent_type: str,
-                                       primary_response: Dict[str, Any],
-                                       secondary_response: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a collaborative crew response"""
-        
-        # Create integration task
-        integration_task_description = f"""
-        Two mental health specialists have provided responses to a user's message: "{message}"
-        
-        Primary Agent ({primary_agent_type}) Response: {primary_response['response']}
-        Secondary Agent ({secondary_agent_type}) Response: {secondary_response['response']}
-        
-        User Context: {context}
-        
-        Create an integrated response that:
-        1. Combines the best elements from both responses
-        2. Maintains a coherent, supportive tone
-        3. Provides comprehensive guidance addressing all user concerns
-        4. Offers both immediate and long-term strategies
-        5. Maintains the user's preferred communication style
-        
-        The integrated response should feel natural and unified, not like two separate responses.
+
+    def _is_simple_query(self, analysis: Dict[str, Any]) -> bool:
         """
-        
-        # Use conversation manager for integration
-        integration_agent = self.agents["conversation_manager"]
-        integration_task = integration_agent.create_task(
-            description=integration_task_description,
-            expected_output="A unified, comprehensive response integrating both specialist perspectives"
-        )
-        
-        # Create crew with both agents
-        crew = Crew(
-            agents=[
-                self.agents[primary_agent_type].agent,
-                self.agents[secondary_agent_type].agent,
-                integration_agent.agent
-            ],
-            tasks=[integration_task],
-            verbose=True
-        )
-        
-        # Execute collaborative response
-        result = crew.kickoff()
-        
-        return {
-            "response": str(result),
-            "primary_agent": primary_agent_type,
-            "secondary_agent": secondary_agent_type,
-            "collaboration_used": True,
-            "techniques_suggested": [
-                primary_response.get("technique_taught") or primary_response.get("cbt_technique"),
-                secondary_response.get("technique_taught") or secondary_response.get("cbt_technique")
-            ],
-            "follow_up_needed": True
-        }
-    
-    def _get_secondary_agent(self, tags: List[str], primary_agent: str) -> Optional[str]:
-        """Determine secondary agent for collaboration"""
-        
-        # Don't use the same agent twice
-        available_agents = [agent for agent in self.agents.keys() if agent != primary_agent]
-        
-        # Score agents based on tag relevance
-        agent_scores = {}
-        for agent_type in available_agents:
-            if agent_type in self.agents:
-                agent_tags = self.agents[agent_type].get_tags()
-                score = len(set(tags) & set(agent_tags))
-                if score > 0:
-                    agent_scores[agent_type] = score
-        
-        # Return highest scoring agent
-        if agent_scores:
-            return max(agent_scores, key=agent_scores.get)
-        
-        return None
-    
+        Determines if a query is simple enough to be handled directly by the ConversationManagerAgent.
+        A query is considered simple if:
+        - The detected intent is a greeting, general inquiry, or small talk.
+        - The emotional state is neutral or positive.
+        - There are no crisis indicators or high urgency levels.
+        - The recommended agent is already the conversation manager, or no specific agent is strongly recommended.
+        """
+        intent = analysis.get("intent", "general_inquiry")
+        emotional_state = analysis.get("emotional_state", "neutral")
+        urgency_level = analysis.get("urgency_level", "low")
+        recommended_agent = analysis.get("recommended_agent", "conversation_manager")
+
+        simple_intents = ["greeting", "general_inquiry", "small_talk", "acknowledgement"]
+        neutral_positive_emotions = ["neutral", "positive", "calm", "curious"]
+
+        if (intent in simple_intents and
+            emotional_state in neutral_positive_emotions and
+            urgency_level == "low" and
+            not analysis.get("crisis_indicators", False) and
+            (recommended_agent == "conversation_manager" or recommended_agent is None)):
+            return True
+        return False
+
     async def _fallback_response(self, message: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """Fallback response when orchestration fails"""
-        
+
         return {
             "response": "I'm here to support you. Could you tell me more about what you're experiencing right now?",
             "primary_agent": "conversation_manager",

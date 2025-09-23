@@ -86,49 +86,51 @@ const ChatbotPage = () => {
             box-sizing: border-box;
         }
         
-        // body {
-        //     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        //     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        //     height: 100vh;
-        //     display: flex;
-        //     align-items: center;
-        //     justify-content: center;
-        // }
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f0fdf4; /* Light green background */
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
         
         .chat-container {
-            //width: 100vw;
-            //max-width: 800px;
+            width: 100vw;
+            max-width: 800px;
             height: 100vh;
-            background: green;
-           // border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            background: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
         
         .chat-header {
-            background: #4f46e5;
+            background: #10b981; /* Green header */
             color: white;
             padding: 20px;
             text-align: center;
+            border-bottom: 1px solid #059669;
         }
         
         .chat-header h1 {
-            font-size: 24px;
+            font-size: 28px;
             margin-bottom: 5px;
+            font-weight: 700;
         }
         
         .chat-header p {
-            opacity: 0.9;
-            font-size: 14px;
+            opacity: 0.95;
+            font-size: 15px;
         }
         
         .chat-messages {
             flex: 1;
             padding: 20px;
             overflow-y: auto;
-            background: #f8fafc;
+            background: #f0fdf4; /* Light green message area */
         }
         
         .message {
@@ -142,81 +144,134 @@ const ChatbotPage = () => {
         }
         
         .message-content {
-            max-width: 70%;
-            padding: 12px 16px;
-            border-radius: 18px;
-            font-size: 14px;
-            line-height: 1.4;
+            max-width: 75%;
+            padding: 12px 18px;
+            border-radius: 20px;
+            font-size: 15px;
+            line-height: 1.5;
+            word-wrap: break-word;
         }
         
         .message.bot .message-content {
-            background: white;
-            border: 1px solid #e2e8f0;
-            color: #334155;
+            background: #e0ffe0; /* Very light green for bot messages */
+            border: 1px solid #a7f3d0;
+            color: #1f2937;
+            border-bottom-left-radius: 5px;
         }
         
         .message.user .message-content {
-            background: #4f46e5;
+            background: #34d399; /* Green for user messages */
             color: white;
+            border-bottom-right-radius: 5px;
         }
         
         .chat-input {
-            padding: 20px;
+            padding: 15px 20px;
             background: white;
             border-top: 1px solid #e2e8f0;
             display: flex;
             gap: 10px;
+            align-items: center;
         }
         
         .chat-input input {
             flex: 1;
-            padding: 12px 16px;
+            padding: 12px 18px;
             border: 1px solid #d1d5db;
             border-radius: 25px;
             outline: none;
-            font-size: 14px;
+            font-size: 15px;
+            transition: border-color 0.2s;
         }
         
         .chat-input input:focus {
-            border-color: #4f46e5;
+            border-color: #10b981; /* Green focus border */
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
         }
         
         .chat-input button {
-            padding: 12px 24px;
-            background: #4f46e5;
+            padding: 12px 25px;
+            background: #10b981; /* Green send button */
             color: white;
             border: none;
             border-radius: 25px;
             cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
+            font-size: 15px;
+            font-weight: 600;
+            transition: background-color 0.2s;
         }
         
         .chat-input button:hover {
-            background: #4338ca;
+            background: #059669; /* Darker green on hover */
         }
         
         .chat-input button:disabled {
-            background: #9ca3af;
+            background: #a7f3d0;
             cursor: not-allowed;
         }
         
         .typing-indicator {
-            padding: 12px 16px;
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 18px;
-            color: #6b7280;
-            font-style: italic;
-            max-width: 70%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 18px;
+            background: #e0ffe0;
+            border: 1px solid #a7f3d0;
+            border-radius: 20px;
+            min-width: 75px;
+            min-height: 40px;
+            border-bottom-left-radius: 5px;
+            box-sizing: border-box;
+            /* Ensure the container itself is visible */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Add a subtle shadow to make it pop */
+        }
+
+        .typing-indicator span {
+            display: inline-block; /* Ensure proper rendering for animation */
+            width: 10px;
+            height: 10px;
+            margin: 0 4px;
+            background-color: #10b981;
+            border-radius: 50%;
+            opacity: 0.8; /* Further increased opacity */
+            animation: pulse 1.2s infinite ease-in-out; /* Slightly faster animation */
+            vertical-align: middle; /* Align dots vertically */
+        }
+
+        .typing-indicator span:nth-child(1) {
+            animation-delay: -0.4s; /* Adjusted delay */
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: -0.2s; /* Adjusted delay */
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0s;
+        }
+
+        @keyframes pulse {
+            0%, 80%, 100% {
+                opacity: 0.4;
+                transform: scale(1);
+            }
+            40% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
         }
         
         .crisis-banner {
-            background: #dc2626;
+            background: #ef4444; /* Red for crisis banner */
             color: white;
             padding: 10px 20px;
             text-align: center;
-            font-size: 12px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        .bold-text {
+            font-weight: bold;
         }
       `}</style>
       <div className="chat-container">
@@ -234,14 +289,15 @@ const ChatbotPage = () => {
         <div className="chat-messages" ref={chatMessagesRef}>
           {messages.map((msg, index) => (
             <div key={index} className={`message ${msg.sender}`}>
-              <div className="message-content">
-                {msg.text}
-              </div>
+              <div 
+                className="message-content" 
+                dangerouslySetInnerHTML={{ __html: msg.text.replace(/\*\*(.*?)\*\*/g, '<span class="bold-text">$1</span>').replace(/\n/g, '<br />') }}
+              ></div>
             </div>
           ))}
           {isTyping && (
             <div className="typing-indicator">
-              AI is thinking...
+              <span></span><span></span><span></span>
             </div>
           )}
         </div>
