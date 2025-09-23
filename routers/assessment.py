@@ -3,7 +3,7 @@ Assessment router for mental health assessments
 """
 from fastapi import APIRouter, HTTPException
 from typing import List, Dict, Any
-from database.mongodb import get_database
+# from database.mongodb import get_database
 from models.schemas import AssessmentResult
 from datetime import datetime
 import logging
@@ -16,9 +16,22 @@ async def get_available_assessments():
     """Get list of available mental health assessments"""
     
     try:
-        db = await get_database()
-        cursor = db.assessments.find({})
+        # db = await get_database()
+        # cursor = db.assessments.find({})
         assessments = []
+        # Mock data since MongoDB is commented out
+        assessments.append({
+            "assessment_id": "GAD-7",
+            "name": "Generalized Anxiety Disorder 7-item",
+            "description": "Screening tool for anxiety disorders",
+            "question_count": 7
+        })
+        assessments.append({
+            "assessment_id": "PHQ-9",
+            "name": "Patient Health Questionnaire-9",
+            "description": "Depression screening tool",
+            "question_count": 9
+        })
         
         async for assessment in cursor:
             assessments.append({
@@ -42,8 +55,54 @@ async def get_assessment(assessment_id: str):
     """Get specific assessment details"""
     
     try:
-        db = await get_database()
-        assessment = await db.assessments.find_one({"assessment_id": assessment_id})
+        # db = await get_database()
+        # assessment = await db.assessments.find_one({"assessment_id": assessment_id})
+        assessment = None
+        if assessment_id == "GAD-7":
+            assessment = {
+                "assessment_id": "GAD-7",
+                "name": "Generalized Anxiety Disorder 7-item",
+                "description": "Screening tool for anxiety disorders",
+                "questions": [
+                    "Feeling nervous, anxious, or on edge",
+                    "Not being able to stop or control worrying", 
+                    "Worrying too much about different things",
+                    "Trouble relaxing",
+                    "Being so restless that it is hard to sit still",
+                    "Becoming easily annoyed or irritable",
+                    "Feeling afraid, as if something awful might happen"
+                ],
+                "scoring": {
+                    "0-4": "Minimal anxiety",
+                    "5-9": "Mild anxiety", 
+                    "10-14": "Moderate anxiety",
+                    "15-21": "Severe anxiety"
+                }
+            }
+        elif assessment_id == "PHQ-9":
+            assessment = {
+                "assessment_id": "PHQ-9",
+                "name": "Patient Health Questionnaire-9",
+                "description": "Depression screening tool",
+                "questions": [
+                    "Little interest or pleasure in doing things",
+                    "Feeling down, depressed, or hopeless",
+                    "Trouble falling or staying asleep, or sleeping too much",
+                    "Feeling tired or having little energy",
+                    "Poor appetite or overeating",
+                    "Feeling bad about yourself or that you are a failure",
+                    "Trouble concentrating on things",
+                    "Moving or speaking slowly or being fidgety/restless",
+                    "Thoughts that you would be better off dead or hurting yourself"
+                ],
+                "scoring": {
+                    "0-4": "Minimal depression",
+                    "5-9": "Mild depression",
+                    "10-14": "Moderate depression", 
+                    "15-19": "Moderately severe depression",
+                    "20-27": "Severe depression"
+                }
+            }
         
         if not assessment:
             raise HTTPException(status_code=404, detail="Assessment not found")
@@ -68,8 +127,54 @@ async def submit_assessment(assessment_id: str, submission: Dict[str, Any]):
             raise HTTPException(status_code=400, detail="User ID and responses are required")
         
         # Get assessment details
-        db = await get_database()
-        assessment = await db.assessments.find_one({"assessment_id": assessment_id})
+        # db = await get_database()
+        # assessment = await db.assessments.find_one({"assessment_id": assessment_id})
+        assessment = None
+        if assessment_id == "GAD-7":
+            assessment = {
+                "assessment_id": "GAD-7",
+                "name": "Generalized Anxiety Disorder 7-item",
+                "description": "Screening tool for anxiety disorders",
+                "questions": [
+                    "Feeling nervous, anxious, or on edge",
+                    "Not being able to stop or control worrying", 
+                    "Worrying too much about different things",
+                    "Trouble relaxing",
+                    "Being so restless that it is hard to sit still",
+                    "Becoming easily annoyed or irritable",
+                    "Feeling afraid, as if something awful might happen"
+                ],
+                "scoring": {
+                    "0-4": "Minimal anxiety",
+                    "5-9": "Mild anxiety", 
+                    "10-14": "Moderate anxiety",
+                    "15-21": "Severe anxiety"
+                }
+            }
+        elif assessment_id == "PHQ-9":
+            assessment = {
+                "assessment_id": "PHQ-9",
+                "name": "Patient Health Questionnaire-9",
+                "description": "Depression screening tool",
+                "questions": [
+                    "Little interest or pleasure in doing things",
+                    "Feeling down, depressed, or hopeless",
+                    "Trouble falling or staying asleep, or sleeping too much",
+                    "Feeling tired or having little energy",
+                    "Poor appetite or overeating",
+                    "Feeling bad about yourself or that you are a failure",
+                    "Trouble concentrating on things",
+                    "Moving or speaking slowly or being fidgety/restless",
+                    "Thoughts that you would be better off dead or hurting yourself"
+                ],
+                "scoring": {
+                    "0-4": "Minimal depression",
+                    "5-9": "Mild depression",
+                    "10-14": "Moderate depression", 
+                    "15-19": "Moderately severe depression",
+                    "20-27": "Severe depression"
+                }
+            }
         
         if not assessment:
             raise HTTPException(status_code=404, detail="Assessment not found")
@@ -93,7 +198,7 @@ async def submit_assessment(assessment_id: str, submission: Dict[str, Any]):
         )
         
         # Save result to database
-        await db.assessment_results.insert_one(result.model_dump())
+        # await db.assessment_results.insert_one(result.model_dump())
         
         return {
             "assessment_id": assessment_id,
@@ -114,8 +219,18 @@ async def get_user_assessment_results(user_id: str, limit: int = 10):
     """Get user's assessment history"""
     
     try:
-        db = await get_database()
-        cursor = db.assessment_results.find({"user_id": user_id}).sort("created_at", -1).limit(limit)
+        # db = await get_database()
+        # cursor = db.assessment_results.find({"user_id": user_id}).sort("created_at", -1).limit(limit)
+        # Mock data since MongoDB is commented out
+        results = []
+        results.append({
+            "user_id": user_id,
+            "assessment_type": "GAD-7",
+            "score": 5,
+            "severity_level": "Mild anxiety",
+            "recommendations": ["Try relaxation techniques like deep breathing"],
+            "created_at": datetime.utcnow()
+        })
         
         results = []
         async for result in cursor:

@@ -4,8 +4,8 @@ Agents router for agent-specific endpoints
 from fastapi import APIRouter, HTTPException
 from typing import List, Dict, Any
 from agents.agent_orchestrator import agent_orchestrator
-from database.collections import ExpertCollection
-from models.schemas import Expert
+# from database.collections import ExpertCollection
+from models.schemas import Expert # Keep this if Expert schema is used elsewhere, otherwise comment out
 import logging
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,9 @@ async def get_available_experts(tags: List[str] = None):
     """Get available human experts"""
     
     try:
-        experts = await ExpertCollection.get_available_experts(tags)
+        # experts = await ExpertCollection.get_available_experts(tags)
+        # Mock empty list since MongoDB is commented out
+        experts = []
         return {
             "experts": [expert.model_dump() for expert in experts],
             "total_experts": len(experts)

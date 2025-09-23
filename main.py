@@ -4,21 +4,21 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from contextlib import asynccontextmanager
 import uvicorn
-from database.mongodb import init_db
+# from database.mongodb import init_db
 from routers import chat, agents, booking, assessment
 from models.schemas import ChatRequest, ChatResponse
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialize database connection
-    await init_db()
+    # await init_db()
     yield
 
 app = FastAPI(
     title="Mental Health Chatbot API",
     description="Multi-agent mental health support system with Gemini AI and CrewAI",
     version="1.0.0",
-    lifespan=lifespan
+    # lifespan=lifespan
 )
 
 # CORS middleware for frontend integration

@@ -2,12 +2,12 @@
 Additional seed data for mental health chatbot
 """
 import asyncio
-from database.mongodb import get_database
+# from database.mongodb import get_database
 from datetime import datetime
 
 async def create_conversation_templates():
     """Create conversation templates for different scenarios"""
-    db = await get_database()
+    # db = await get_database()
     
     templates = [
         {
@@ -49,15 +49,15 @@ async def create_conversation_templates():
     ]
     
     # Clear existing templates
-    await db.conversation_templates.delete_many({})
+    # await db.conversation_templates.delete_many({})
     
     # Insert new templates
-    result = await db.conversation_templates.insert_many(templates)
-    print(f"Created {len(result.inserted_ids)} conversation templates")
+    # result = await db.conversation_templates.insert_many(templates)
+    # print(f"Created {len(result.inserted_ids)} conversation templates")
 
 async def create_agent_configurations():
     """Create agent configuration data"""
-    db = await get_database()
+    # db = await get_database()
     
     agent_configs = [
         {
@@ -147,11 +147,11 @@ async def create_agent_configurations():
     ]
     
     # Clear existing configurations
-    await db.agent_configs.delete_many({})
+    # await db.agent_configs.delete_many({})
     
     # Insert new configurations
-    result = await db.agent_configs.insert_many(agent_configs)
-    print(f"Created {len(result.inserted_ids)} agent configurations")
+    # result = await db.agent_configs.insert_many(agent_configs)
+    # print(f"Created {len(result.inserted_ids)} agent configurations")
 
 async def main():
     """Seed additional database data"""

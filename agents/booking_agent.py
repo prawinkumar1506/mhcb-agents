@@ -3,7 +3,7 @@ Booking Agent - Handles escalation and appointment scheduling
 """
 from agents.base_agent import BaseAgent
 from typing import Dict, List, Any
-from database.collections import ExpertCollection, BookingCollection, HelplineCollection
+# from database.collections import ExpertCollection, BookingCollection, HelplineCollection
 from models.schemas import BookingRequest
 from datetime import datetime, timedelta
 import logging
@@ -144,10 +144,10 @@ class BookingAgent(BaseAgent):
         try:
             # Get helplines for crisis situations
             if intervention_type == "crisis":
-                helplines = await HelplineCollection.get_helplines()
+                # helplines = await HelplineCollection.get_helplines()
                 resources["helplines"] = [
-                    {"issue": h.issue, "number": h.number, "description": h.description}
-                    for h in helplines
+                    {"issue": "Suicidal Thoughts", "number": "+91-9152987821", "description": "24/7 suicide prevention helpline"},
+                    {"issue": "Mental Health Crisis", "number": "1075", "description": "Kiran Mental Health Helpline"}
                 ]
                 resources["immediate_actions"] = [
                     "Call crisis helpline immediately",
@@ -157,17 +157,9 @@ class BookingAgent(BaseAgent):
                 ]
             
             # Get available experts
-            relevant_tags = context.get("detected_tags", [])
-            experts = await ExpertCollection.get_available_experts(relevant_tags)
-            resources["experts"] = [
-                {
-                    "name": expert.name,
-                    "profession": expert.profession,
-                    "specialties": expert.tags,
-                    "available": expert.availability
-                }
-                for expert in experts[:3]  # Limit to top 3 matches
-            ]
+            # relevant_tags = context.get("detected_tags", [])
+            # experts = await ExpertCollection.get_available_experts(relevant_tags)
+            resources["experts"] = [] # Mock empty list since collection is commented out
             
             # Set follow-up actions based on intervention type
             if intervention_type == "urgent":
@@ -213,12 +205,12 @@ class BookingAgent(BaseAgent):
                       f"Detected concerns: {', '.join(context.get('detected_tags', []))}"
             )
             
-            success = await BookingCollection.create_booking(booking)
+            # success = await BookingCollection.create_booking(booking)
             
-            if success:
-                logger.info(f"Booking created for user {user_id} with urgency {intervention_type}")
+            # if success:
+            #     logger.info(f"Booking created for user {user_id} with urgency {intervention_type}")
             
-            return success
+            return False # BookingCollection is commented out, so this operation will not succeed
             
         except Exception as e:
             logger.error(f"Error creating booking request: {e}")
@@ -229,8 +221,9 @@ class BookingAgent(BaseAgent):
         
         try:
             # Get helplines as fallback
-            helplines = await HelplineCollection.get_helplines()
-            helpline_text = "\n".join([f"• {h.issue}: {h.number}" for h in helplines[:3]])
+            # helplines = await HelplineCollection.get_helplines()
+            helpline_text = """• Suicidal Thoughts: +91-9152987821 (24/7 Suicide Prevention)
+• Mental Health Crisis: 1075 (Kiran Mental Health Helpline)"""
             
             crisis_response = f"""I'm very concerned about your safety. Please reach out for immediate help:
 
@@ -245,7 +238,7 @@ I'm also connecting you with a counselor who can provide immediate support."""
                 "intervention_type": "crisis",
                 "immediate_action_required": True,
                 "escalation_completed": True,
-                "resources_provided": {"helplines": [h.model_dump() for h in helplines]},
+                "resources_provided": {"helplines": [{"issue": "Suicidal Thoughts", "number": "+91-9152987821", "description": "24/7 Suicide Prevention"}, {"issue": "Mental Health Crisis", "number": "1075", "description": "Kiran Mental Health Helpline"}]},
                 "follow_up_needed": True
             }
             

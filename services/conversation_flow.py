@@ -5,7 +5,7 @@ from typing import Dict, List, Any, Optional, Tuple
 from services.gemini_service import gemini_service
 from services.language_service import language_service
 from agents.agent_orchestrator import agent_orchestrator
-from database.collections import UserCollection, ConversationCollection, HelplineCollection
+# from database.collections import UserCollection, ConversationCollection, HelplineCollection
 from models.schemas import User, ChatMessage, MessageRole, UserStyle, Language
 import uuid
 from datetime import datetime
@@ -32,13 +32,20 @@ class ConversationFlowService:
             session_context = await self._get_or_create_session(session_id, user_id)
             
             # Step 2: Get or create user profile
-            user = await self._get_or_create_user(user_id, language)
+            # user = await self._get_or_create_user(user_id, language)
+            # Mock user since MongoDB is commented out
+            user = User(
+                user_id=user_id,
+                language=Language(language) if language else Language.ENGLISH,
+                preferred_style=UserStyle.EMPATHETIC,
+                history=[]
+            )
             
             # Step 3: Detect language and update if needed
             detected_language = language_service.detect_language(message)
             if detected_language != user.language.value:
                 user.language = Language(detected_language)
-                await UserCollection.update_user_history(user_id, [])  # Trigger user update
+                # await UserCollection.update_user_history(user_id, [])  # Trigger user update
             
             # Step 4: Analyze message intent and emotion
             analysis = await gemini_service.analyze_intent_and_emotion(
@@ -81,7 +88,7 @@ class ConversationFlowService:
             )
             
             # Step 10: Update user profile
-            await UserCollection.update_user_history(user_id, analysis.get("detected_tags", []))
+            # await UserCollection.update_user_history(user_id, analysis.get("detected_tags", []))
             
             # Step 11: Update session memory
             self._update_session_memory(session_id, session_context, response_data)
@@ -133,15 +140,15 @@ class ConversationFlowService:
     async def _get_or_create_user(self, user_id: str, language: Optional[str] = None) -> User:
         """Get existing user or create new one"""
         
-        user = await UserCollection.get_user(user_id)
-        if not user:
-            user = User(
-                user_id=user_id,
-                language=Language(language) if language else Language.ENGLISH,
-                preferred_style=UserStyle.EMPATHETIC,
-                history=[]
-            )
-            await UserCollection.create_user(user)
+        # user = await UserCollection.get_user(user_id)
+        # if not user:
+        user = User(
+            user_id=user_id,
+            language=Language(language) if language else Language.ENGLISH,
+            preferred_style=UserStyle.EMPATHETIC,
+            history=[]
+        )
+            # await UserCollection.create_user(user)
         
         return user
     
@@ -249,8 +256,13 @@ class ConversationFlowService:
         crisis_messages = language_service.get_crisis_messages(user.language.value)
         
         # Get helpline numbers
-        helplines = await HelplineCollection.get_helplines(region="India")
-        helpline_dict = {helpline.issue: helpline.number for helpline in helplines}
+        # helplines = await HelplineCollection.get_helplines(region="India")
+        # helpline_dict = {helpline.issue: helpline.number for helpline in helplines}
+        # Mock helplines since MongoDB is commented out
+        helpline_dict = {
+            "Suicidal Thoughts": "+91-9152987821",
+            "Mental Health Crisis": "1075"
+        }
         
         # Construct crisis response
         crisis_response = f"{crisis_messages['crisis_message']}\n\n"
@@ -363,46 +375,43 @@ class ConversationFlowService:
                                          user_message: str, ai_response: str, analysis: Dict[str, Any]):
         """Update conversation history in database"""
         
-        try:
-            messages = [
-                ChatMessage(
-                    role=MessageRole.USER,
-                    content=user_message,
-                    timestamp=datetime.utcnow()
-                ),
-                ChatMessage(
-                    role=MessageRole.AGENT,
-                    content=ai_response,
-                    timestamp=datetime.utcnow(),
-                    agent_type=analysis.get("recommended_agent", "conversation_manager")
-                )
-            ]
+        messages = [
+            ChatMessage(
+                role=MessageRole.USER,
+                content=user_message,
+                timestamp=datetime.utcnow()
+            ),
+            ChatMessage(
+                role=MessageRole.AGENT,
+                content=ai_response,
+                timestamp=datetime.utcnow(),
+                agent_type=analysis.get("recommended_agent", "conversation_manager")
+            )
+        ]
+        
+        # Try to update existing conversation or create new one
+        # existing_conversations = await ConversationCollection.get_user_conversations(user_id, 1)
+        
+        # if existing_conversations and existing_conversations[0].conversation_id == session_id:
+        #     # Update existing conversation
+        #     existing_messages = existing_conversations[0].messages
+        #     existing_messages.extend(messages)
+        #     await ConversationCollection.update_conversation(
+        #         session_id, 
+        #         [msg.model_dump() for msg in existing_messages],
+        #         analysis.get("detected_tags", [])
+        #     )
+        # else:
+        #     # Create new conversation
+        #     from models.schemas import Conversation
+        #     conversation = Conversation(
+        #         conversation_id=session_id,
+        #         user_id=user_id,
+        #         messages=messages,
+        #         detected_tags=analysis.get("detected_tags", [])
+        #     )
+        #     await ConversationCollection.create_conversation(conversation)
             
-            # Try to update existing conversation or create new one
-            existing_conversations = await ConversationCollection.get_user_conversations(user_id, 1)
-            
-            if existing_conversations and existing_conversations[0].conversation_id == session_id:
-                # Update existing conversation
-                existing_messages = existing_conversations[0].messages
-                existing_messages.extend(messages)
-                await ConversationCollection.update_conversation(
-                    session_id, 
-                    [msg.model_dump() for msg in existing_messages],
-                    analysis.get("detected_tags", [])
-                )
-            else:
-                # Create new conversation
-                from models.schemas import Conversation
-                conversation = Conversation(
-                    conversation_id=session_id,
-                    user_id=user_id,
-                    messages=messages,
-                    detected_tags=analysis.get("detected_tags", [])
-                )
-                await ConversationCollection.create_conversation(conversation)
-                
-        except Exception as e:
-            logger.error(f"Error updating conversation history: {e}")
     
     def _update_session_memory(self, session_id: str, session_context: Dict[str, Any], response_data: Dict[str, Any]):
         """Update session memory with latest interaction"""

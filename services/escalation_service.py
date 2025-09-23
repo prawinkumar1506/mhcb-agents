@@ -2,7 +2,7 @@
 Escalation Service - Manages escalation protocols and notifications
 """
 from typing import Dict, List, Any, Optional
-from database.collections import BookingCollection, ExpertCollection, UserCollection
+# from database.collections import BookingCollection, ExpertCollection, UserCollection
 from models.schemas import BookingRequest, Expert
 from datetime import datetime, timedelta
 import logging
@@ -151,18 +151,18 @@ class EscalationService:
         """Notify available counselors about escalation"""
         try:
             # Get available counselors
-            counselors = await ExpertCollection.get_available_experts(["General", "Crisis"])
+            # counselors = await ExpertCollection.get_available_experts(["General", "Crisis"])
             
-            if not counselors:
-                logger.warning("No available counselors for escalation notification")
-                return False
+            # if not counselors:
+            logger.warning("No available counselors for escalation notification (MongoDB commented out)")
+            return False
             
             # In a real implementation, this would send actual notifications
             # For now, log the notification
-            for counselor in counselors[:2]:  # Notify top 2 available counselors
-                logger.info(f"Escalation notification sent to {counselor.name} for user {user_id} - Level: {escalation_level}")
+            # for counselor in counselors[:2]:  # Notify top 2 available counselors
+            #     logger.info(f"Escalation notification sent to {counselor.name} for user {user_id} - Level: {escalation_level}")
             
-            return True
+            # return True
             
         except Exception as e:
             logger.error(f"Error notifying counselors: {e}")
@@ -197,7 +197,8 @@ class EscalationService:
                 notes=f"Same-day booking from escalation. Concerns: {', '.join(context.get('detected_tags', []))}"
             )
             
-            return await BookingCollection.create_booking(booking)
+            # return await BookingCollection.create_booking(booking)
+            return False # BookingCollection is commented out
             
         except Exception as e:
             logger.error(f"Error creating same-day booking: {e}")
@@ -214,7 +215,8 @@ class EscalationService:
                 notes=f"Priority booking from escalation. Concerns: {', '.join(context.get('detected_tags', []))}"
             )
             
-            return await BookingCollection.create_booking(booking)
+            # return await BookingCollection.create_booking(booking)
+            return False # BookingCollection is commented out
             
         except Exception as e:
             logger.error(f"Error creating priority booking: {e}")
@@ -230,7 +232,8 @@ class EscalationService:
                 notes=f"Standard booking from escalation. Concerns: {', '.join(context.get('detected_tags', []))}"
             )
             
-            return await BookingCollection.create_booking(booking)
+            # return await BookingCollection.create_booking(booking)
+            return False # BookingCollection is commented out
             
         except Exception as e:
             logger.error(f"Error creating standard booking: {e}")
@@ -284,10 +287,13 @@ class EscalationService:
     async def _save_escalation_record(self, record: Dict[str, Any]) -> bool:
         """Save escalation record to database"""
         try:
-            from database.mongodb import get_database
-            db = await get_database()
-            result = await db.escalations.insert_one(record)
-            return result.inserted_id is not None
+            # from database.mongodb import get_database
+            # db = await get_database()
+            # from database.mongodb import get_database
+            # db = await get_database()
+            # result = await db.escalations.insert_one(record)
+            # return result.inserted_id is not None
+            return False # MongoDB is commented out, so this operation will not succeed
         except Exception as e:
             logger.error(f"Error saving escalation record: {e}")
             return False
@@ -312,7 +318,7 @@ class EscalationService:
                 urgency_level="crisis",
                 notes="EMERGENCY: Escalation system failure - immediate attention required"
             )
-            await BookingCollection.create_booking(booking)
+            # await BookingCollection.create_booking(booking)
         except Exception as e:
             logger.critical(f"Emergency booking creation failed: {e}")
 

@@ -7,7 +7,7 @@ from agents.conversation_manager import ConversationManagerAgent
 from agents.cbt_therapist import CBTTherapistAgent
 from agents.mindfulness_coach import MindfulnessCoachAgent
 from agents.booking_agent import BookingAgent
-from database.collections import UserCollection
+# from database.collections import UserCollection
 import logging
 
 logger = logging.getLogger(__name__)
@@ -42,11 +42,11 @@ class AgentOrchestrator:
         """
         try:
             # Get user context
-            user = await UserCollection.get_user(user_id)
+            # user = await UserCollection.get_user(user_id)
             user_context = {
-                "user_history": user.history if user else [],
-                "preferred_style": user.preferred_style.value if user else "empathetic",
-                "language": user.language.value if user else "English",
+                "user_history": [], # Mock empty history
+                "preferred_style": "empathetic", # Mock default style
+                "language": "English", # Mock default language
                 "user_id": user_id  # Added user_id to context
             }
             

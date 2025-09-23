@@ -4,20 +4,78 @@ Booking router for appointment scheduling and escalation
 from fastapi import APIRouter, HTTPException
 from typing import List, Dict, Any, Optional
 from models.schemas import BookingRequest, Expert
-from database.collections import BookingCollection, ExpertCollection
+# from database.collections import BookingCollection, ExpertCollection
 from services.escalation_service import escalation_service
 from datetime import datetime, timedelta
 import logging
+import os
+from dotenv import load_dotenv
+from email.message import EmailMessage
+import ssl # Import ssl module
+from aiosmtplib import SMTP
+from config.settings import settings # Import the settings object
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+bookings = {} # In-memory storage for bookings
+
+async def send_email(to_email: str, subject: str, body: str):
+    """Sends an email using aiosmtplib."""
+    if not settings.MAIL_USERNAME or not settings.MAIL_PASSWORD or not settings.MAIL_SERVER or not settings.MAIL_PORT:
+        logger.error("Email configuration is incomplete. Cannot send email.")
+        raise ValueError("Email configuration is incomplete.")
+
+    message = EmailMessage()
+    message["From"] = settings.MAIL_USERNAME
+    message["To"] = to_email
+    message["Subject"] = subject
+    message.set_content(body)
+
+    try:
+        # Create a custom SSL context to explicitly set minimum TLS version
+        context = ssl.create_default_context()
+        context.minimum_version = ssl.TLSVersion.TLSv1_2 # Ensure TLS 1.2 or higher
+        context.check_hostname = True # Explicitly enable hostname checking
+
+        smtp = SMTP(
+            hostname=settings.MAIL_SERVER,
+            port=settings.MAIL_PORT,
+            start_tls=True,    # Use STARTTLS for port 587
+            use_tls=False,     # Do not use implicit TLS here
+            tls_context=context,
+            validate_certs=True
+        )
+        await smtp.connect()
+        await smtp.login(settings.MAIL_USERNAME, settings.MAIL_PASSWORD)
+        await smtp.send_message(message)
+        await smtp.quit()
+        logger.info(f"Email sent successfully to {to_email} with subject '{subject}'")
+    except Exception as e:
+        logger.error(f"Failed to send email to {to_email}: {e}")
+        raise
+
+async def send_confirmation(student_email: str, slot_dt_str: str):
+    """Sends a confirmation email."""
+    subject = "Counselling Confirmation"
+    body = f"Your counselling session is confirmed for {slot_dt_str}."
+    await send_email(student_email, subject, body)
+
+async def send_reminder(student_email: str, slot_dt_str: str):
+    """Sends a reminder email."""
+    subject = "Counselling Reminder"
+    body = f"Reminder: Your counselling session is at {slot_dt_str}."
+    await send_email(student_email, subject, body)
 
 @router.post("/request")
 async def create_booking_request(booking: BookingRequest):
     """Create a new booking request"""
     
     try:
-        success = await BookingCollection.create_booking(booking)
+        # success = await BookingCollection.create_booking(booking)
+        success = False # Mock success since MongoDB is commented out
         
         if success:
             # Trigger escalation if urgent
@@ -43,7 +101,13 @@ async def create_booking_request(booking: BookingRequest):
                 "escalation_triggered": booking.urgency_level in ["crisis", "urgent"]
             }
         else:
-            raise HTTPException(status_code=500, detail="Failed to create booking request")
+            # raise HTTPException(status_code=500, detail="Failed to create booking request")
+            return {
+                "message": "Booking request not created (MongoDB commented out)",
+                "booking_id": f"MOCK_BOOK_{booking.user_id}_{int(datetime.utcnow().timestamp())}",
+                "urgency_level": booking.urgency_level,
+                "escalation_triggered": booking.urgency_level in ["crisis", "urgent"]
+            }
             
     except Exception as e:
         logger.error(f"Error creating booking request: {e}")
@@ -54,18 +118,20 @@ async def get_available_experts(specialties: Optional[List[str]] = None):
     """Get available experts, optionally filtered by specialties"""
     
     try:
-        experts = await ExpertCollection.get_available_experts(specialties)
+        # experts = await ExpertCollection.get_available_experts(specialties)
+        # Mock empty list since MongoDB is commented out
+        experts = []
         
         return {
             "experts": [
-                {
-                    "expert_id": expert.expert_id,
-                    "name": expert.name,
-                    "profession": expert.profession,
-                    "specialties": expert.tags,
-                    "availability": expert.availability
-                }
-                for expert in experts
+                # {
+                #     "expert_id": expert.expert_id,
+                #     "name": expert.name,
+                #     "profession": expert.profession,
+                #     "specialties": expert.tags,
+                #     "availability": expert.availability
+                # }
+                # for expert in experts
             ],
             "total_available": len(experts),
             "filtered_by": specialties or []
@@ -106,21 +172,30 @@ async def get_user_bookings(user_id: str):
     """Get booking history for a user"""
     
     try:
-        from database.mongodb import get_database
-        db = await get_database()
+        # from database.mongodb import get_database
+        # db = await get_database()
         
-        cursor = db.bookings.find({"user_id": user_id}).sort("created_at", -1)
+        # cursor = db.bookings.find({"user_id": user_id}).sort("created_at", -1)
         bookings = []
+        # Mock data since MongoDB is commented out
+        bookings.append({
+            "booking_id": "MOCK_BOOK_123",
+            "expert_type": "student_counselor",
+            "urgency_level": "normal",
+            "status": "pending",
+            "created_at": datetime.utcnow(),
+            "notes": "Mock booking from commented out MongoDB"
+        })
         
-        async for booking in cursor:
-            bookings.append({
-                "booking_id": str(booking.get("_id", "")),
-                "expert_type": booking.get("expert_type", ""),
-                "urgency_level": booking.get("urgency_level", ""),
-                "status": booking.get("status", "pending"),
-                "created_at": booking.get("created_at", ""),
-                "notes": booking.get("notes", "")
-            })
+        # async for booking in cursor:
+        #     bookings.append({
+        #         "booking_id": str(booking.get("_id", "")),
+        #         "expert_type": booking.get("expert_type", ""),
+        #         "urgency_level": booking.get("urgency_level", ""),
+        #         "status": booking.get("status", "pending"),
+        #         "created_at": booking.get("created_at", ""),
+        #         "notes": booking.get("notes", "")
+        #     })
         
         return {
             "user_id": user_id,
@@ -137,8 +212,8 @@ async def get_user_escalations(user_id: str):
     """Get escalation history for a user"""
     
     try:
-        from database.mongodb import get_database
-        db = await get_database()
+        # from database.mongodb import get_database
+        # db = await get_database()
         
         cursor = db.escalations.find({"user_id": user_id}).sort("triggered_at", -1)
         escalations = []
@@ -178,28 +253,28 @@ async def update_booking_status(booking_id: str, status_update: Dict[str, str]):
         if new_status not in valid_statuses:
             raise HTTPException(status_code=400, detail="Invalid status")
         
-        from database.mongodb import get_database
-        db = await get_database()
+        # from database.mongodb import get_database
+        # db = await get_database()
         
-        result = await db.bookings.update_one(
-            {"booking_id": booking_id},
-            {
-                "$set": {
-                    "status": new_status,
-                    "updated_at": datetime.utcnow(),
-                    "status_notes": notes
-                }
-            }
-        )
+        # result = await db.bookings.update_one(
+        #     {"booking_id": booking_id},
+        #     {
+        #         "$set": {
+        #             "status": new_status,
+        #             "updated_at": datetime.utcnow(),
+        #             "status_notes": notes
+        #         }
+        #     }
+        # )
         
-        if result.modified_count == 0:
-            raise HTTPException(status_code=404, detail="Booking not found")
+        # if result.modified_count == 0:
+        #     raise HTTPException(status_code=404, detail="Booking not found")
         
         return {
             "booking_id": booking_id,
             "status": new_status,
             "updated_at": datetime.utcnow(),
-            "message": "Booking status updated successfully"
+            "message": "Booking status updated successfully (mocked)"
         }
         
     except HTTPException:
@@ -213,8 +288,8 @@ async def get_escalation_stats():
     """Get escalation statistics (for admin/monitoring)"""
     
     try:
-        from database.mongodb import get_database
-        db = await get_database()
+        # from database.mongodb import get_database
+        # db = await get_database()
         
         # Get escalation counts by level
         pipeline = [
